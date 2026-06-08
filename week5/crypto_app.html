@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoKit — Mini Encryption App</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+    background: #161b22; border-right: 1px solid #30363d;
+    display: flex; flex-direction: column; padding: 1.5rem 1rem;
+    z-index: 100;
+  }
+  .logo { font-size: 1.2rem; font-weight: bold; color: #58a6ff; margin-bottom: 0.3rem; }
+  .logo span { color: #3fb950; }
+  .tagline { font-size: 0.7rem; color: #6e7681; margin-bottom: 2rem; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0.6rem 0.8rem; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; color: #8b949e; margin-bottom: 4px;
+    border: none; background: none; width: 100%; text-align: left;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-item:hover { background: #21262d; color: #c9d1d9; }
+  .nav-item.active { background: #1f3a5f; color: #58a6ff; }
+  .nav-icon { font-size: 1rem; }
+
+  .main { margin-left: 220px; padding: 2rem; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title { font-size: 1.4rem; color: #e6edf3; margin-bottom: 0.3rem; }
+  .page-sub { font-size: 0.8rem; color: #6e7681; margin-bottom: 1.8rem; }
+
+  .card {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 8px; padding: 1.5rem; margin-bottom: 1.2rem;
+  }
+  .card-title { font-size: 0.75rem; color: #6e7681; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+
+  label { font-size: 0.8rem; color: #8b949e; display: block; margin-bottom: 0.4rem; }
+
+  input[type="text"], input[type="password"], textarea, select {
+    width: 100%; background: #0d1117; border: 1px solid #30363d;
+    border-radius: 6px; padding: 0.6rem 0.8rem; color: #c9d1d9;
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    outline: none; transition: border 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: #58a6ff; }
+  textarea { resize: vertical; min-height: 90px; }
+  select option { background: #161b22; }
+
+  .form-row { margin-bottom: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  .btn {
+    padding: 0.55rem 1.2rem; border-radius: 6px; font-size: 0.85rem;
+    font-family: 'Courier New', monospace; cursor: pointer;
+    border: 1px solid; transition: all 0.15s; font-weight: 500;
+  }
+  .btn-primary { background: #1f3a5f; border-color: #58a6ff; color: #58a6ff; }
+  .btn-primary:hover { background: #58a6ff; color: #0d1117; }
+  .btn-success { background: #1a3a2a; border-color: #3fb950; color: #3fb950; }
+  .btn-success:hover { background: #3fb950; color: #0d1117; }
+  .btn-danger { background: #3a1a1a; border-color: #f85149; color: #f85149; }
+  .btn-danger:hover { background: #f85149; color: #0d1117; }
+  .btn-ghost { background: transparent; border-color: #30363d; color: #8b949e; }
+  .btn-ghost:hover { border-color: #8b949e; color: #c9d1d9; }
+  .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
+
+  .output-box {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 0.8rem; font-size: 0.82rem; color: #3fb950;
+    word-break: break-all; min-height: 60px; white-space: pre-wrap;
+    font-family: 'Courier New', monospace; position: relative;
+  }
+  .output-label { font-size: 0.72rem; color: #6e7681; margin-bottom: 0.4rem; }
+
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: #21262d; border: 1px solid #30363d; color: #8b949e;
+    border-radius: 4px; padding: 2px 8px; font-size: 0.7rem;
+    cursor: pointer; font-family: 'Courier New', monospace;
+  }
+  .copy-btn:hover { color: #c9d1d9; border-color: #8b949e; }
+
+  .strength-bar-wrap { height: 6px; background: #21262d; border-radius: 3px; margin: 0.5rem 0; }
+  .strength-bar { height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s; width: 0%; }
+
+  .strength-label { font-size: 0.8rem; font-weight: 500; }
+  .criteria-list { margin-top: 0.8rem; }
+  .criteria-item { font-size: 0.78rem; padding: 3px 0; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.pass { background: #3fb950; }
+  .dot.fail { background: #30363d; }
+
+  .cipher-tabs { display: flex; gap: 6px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .cipher-tab {
+    padding: 0.4rem 0.9rem; border-radius: 20px; font-size: 0.78rem;
+    cursor: pointer; border: 1px solid #30363d; color: #8b949e;
+    background: transparent; font-family: 'Courier New', monospace;
+    transition: all 0.15s;
+  }
+  .cipher-tab.active { border-color: #58a6ff; color: #58a6ff; background: #1f3a5f; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 0.68rem; font-weight: 500; margin-left: 6px;
+  }
+  .badge-blue { background: #1f3a5f; color: #58a6ff; border: 1px solid #58a6ff; }
+  .badge-green { background: #1a3a2a; color: #3fb950; border: 1px solid #3fb950; }
+  .badge-yellow { background: #3a2e1a; color: #e3b341; border: 1px solid #e3b341; }
+
+  .file-drop {
+    border: 2px dashed #30363d; border-radius: 8px; padding: 2rem;
+    text-align: center; cursor: pointer; transition: border 0.15s;
+    color: #6e7681; font-size: 0.85rem;
+  }
+  .file-drop:hover, .file-drop.dragover { border-color: #58a6ff; color: #58a6ff; }
+  .file-drop input { display: none; }
+
+  .file-info { display: none; margin-top: 1rem; }
+  .file-info.show { display: block; }
+  .file-name { font-size: 0.85rem; color: #3fb950; }
+  .file-size { font-size: 0.75rem; color: #6e7681; }
+
+  .alert { padding: 0.7rem 1rem; border-radius: 6px; font-size: 0.8rem; margin-top: 0.8rem; }
+  .alert-success { background: #1a3a2a; border: 1px solid #3fb950; color: #3fb950; }
+  .alert-error { background: #3a1a1a; border: 1px solid #f85149; color: #f85149; }
+  .alert-info { background: #1f3a5f; border: 1px solid #58a6ff; color: #58a6ff; }
+
+  .home-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .home-card {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 1.5rem; cursor: pointer; transition: border 0.15s, transform 0.15s;
+    text-align: center;
+  }
+  .home-card:hover { border-color: #58a6ff; transform: translateY(-2px); }
+  .home-card-icon { font-size: 2rem; margin-bottom: 0.8rem; }
+  .home-card-title { font-size: 1rem; color: #e6edf3; margin-bottom: 0.4rem; }
+  .home-card-desc { font-size: 0.75rem; color: #6e7681; line-height: 1.5; }
+
+  .divider { border: none; border-top: 1px solid #21262d; margin: 1.2rem 0; }
+
+  @media (max-width: 700px) {
+    .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; padding: 1rem; }
+    .main { margin-left: 0; }
+    .home-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">Crypto<span>Kit</span></div>
+  <div class="tagline">Mini Encryption App — BIT4138</div>
+  <button class="nav-item active" onclick="showPage('home', this)">
+    <span class="nav-icon">🏠</span> Home
+  </button>
+  <button class="nav-item" onclick="showPage('encrypt', this)">
+    <span class="nav-icon">🔐</span> Text Encryption
+  </button>
+  <button class="nav-item" onclick="showPage('file', this)">
+    <span class="nav-icon">📁</span> File Encryption
+  </button>
+  <button class="nav-item" onclick="showPage('strength', this)">
+    <span class="nav-icon">🛡️</span> Password Checker
+  </button>
+</nav>
+
+<main class="main">
+
+  <!-- HOME PAGE -->
+  <div id="page-home" class="page active">
+    <div class="page-title">Welcome to CryptoKit</div>
+    <div class="page-sub">A practical encryption toolkit built for BIT4138 Advanced Cryptography</div>
+
+    <div class="home-grid">
+      <div class="home-card" onclick="showPage('encrypt', document.querySelectorAll('.nav-item')[1])">
+        <div class="home-card-icon">🔐</div>
+        <div class="home-card-title">Text Encryption</div>
+        <div class="home-card-desc">Encrypt and decrypt messages using Caesar, Vigenère, or AES ciphers</div>
+      </div>
+      <div class="home-card" onclick="showPage('file', document.querySelectorAll('.nav-item')[2])">
+        <div class="home-card-icon">📁</div>
+        <div class="home-card-title">File Encryption</div>
+        <div class="home-card-desc">Upload a .txt file, encrypt or decrypt its contents and download the result</div>
+      </div>
+      <div class="home-card" onclick="showPage('strength', document.querySelectorAll('.nav-item')[3])">
+        <div class="home-card-icon">🛡️</div>
+        <div class="home-card-title">Password Checker</div>
+        <div class="home-card-desc">Test your encryption key strength before using it to protect your data</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cipher Reference</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.8rem;">
+        <div>
+          <div style="color: #e6edf3; margin-bottom: 0.4rem;">Caesar Cipher <span class="badge badge-yellow">Classical</span></div>
+          <div style="color: #6e7681; line-height: 1.6;">Shifts each letter by a fixed number. Simple substitution cipher with a key space of only 26. Vulnerable to brute force.</div>
+        </div>
+        <div>
+          <div style="color: #e6edf3; margin-bottom: 0.4rem;">Vigenère Cipher <span class="badge badge-yellow">Classical</span></div>
+          <div style="color: #6e7681; line-height: 1.6;">Uses a keyword to apply multiple Caesar shifts. Polyalphabetic — harder to crack but still vulnerable to Kasiski analysis.</div>
+        </div>
+        <div>
+          <div style="color: #e6edf3; margin-bottom: 0.4rem;">AES-256 <span class="badge badge-green">Modern</span></div>
+          <div style="color: #6e7681; line-height: 1.6;">Advanced Encryption Standard. Industry-grade symmetric block cipher. Used in banking, government, and secure communications.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEXT ENCRYPTION PAGE -->
+  <div id="page-encrypt" class="page">
+    <div class="page-title">Text Encryption</div>
+    <div class="page-sub">Choose a cipher, enter your message and key, then encrypt or decrypt</div>
+
+    <div class="cipher-tabs">
+      <button class="cipher-tab active" onclick="setCipher('caesar', this)">Caesar</button>
+      <button class="cipher-tab" onclick="setCipher('vigenere', this)">Vigenère</button>
+      <button class="cipher-tab" onclick="setCipher('aes', this)">AES-256</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="cipher-label">Caesar Cipher — Shift Key (1–25)</div>
+
+      <div class="form-row">
+        <label>Message</label>
+        <textarea id="input-text" placeholder="Enter your message here..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <label id="key-label">Shift Value (1–25)</label>
+        <input type="text" id="input-key" placeholder="e.g. 4" />
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="doEncrypt()">🔒 Encrypt</button>
+        <button class="btn btn-success" onclick="doDecrypt()">🔓 Decrypt</button>
+        <button class="btn btn-ghost" onclick="clearAll()">✕ Clear</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="output-label">Output</div>
+      <div class="output-box" id="output-text">
+        Result will appear here...
+        <button class="copy-btn" onclick="copyOutput()">copy</button>
+      </div>
+      <div id="output-alert"></div>
+    </div>
+  </div>
+
+  <!-- FILE ENCRYPTION PAGE -->
+  <div id="page-file" class="page">
+    <div class="page-title">File Encryption</div>
+    <div class="page-sub">Upload a .txt file to encrypt or decrypt its contents using AES-256</div>
+
+    <div class="card">
+      <div class="card-title">Upload File</div>
+      <div class="file-drop" id="file-drop" onclick="document.getElementById('file-input').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <input type="file" id="file-input" accept=".txt" onchange="handleFileSelect(event)">
+        <div>📄 Click to upload or drag and drop</div>
+        <div style="font-size: 0.72rem; margin-top: 0.3rem; color: #6e7681;">.txt files only</div>
+      </div>
+      <div class="file-info" id="file-info">
+        <div class="file-name" id="file-name"></div>
+        <div class="file-size" id="file-size"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Encryption Key</div>
+      <div class="form-row">
+        <label>AES Password Key</label>
+        <input type="password" id="file-key" placeholder="Enter a strong password..." />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="encryptFile()">🔒 Encrypt File</button>
+        <button class="btn btn-success" onclick="decryptFile()">🔓 Decrypt File</button>
+      </div>
+      <div id="file-alert"></div>
+    </div>
+
+    <div class="card" id="file-output-card" style="display:none;">
+      <div class="card-title">File Output</div>
+      <div class="output-label" id="file-output-label"></div>
+      <div class="output-box" id="file-output-text" style="max-height: 200px; overflow-y: auto;"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="download-btn" onclick="downloadFile()">⬇ Download Result</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASSWORD CHECKER PAGE -->
+  <div id="page-strength" class="page">
+    <div class="page-title">Password Strength Checker</div>
+    <div class="page-sub">Test your encryption key before using it — a weak key means weak encryption</div>
+
+    <div class="card">
+      <div class="form-row">
+        <label>Enter your key or password</label>
+        <input type="text" id="pw-input" placeholder="Type your key here..." oninput="checkStrength()" />
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <span style="font-size: 0.78rem; color: #6e7681;">Strength</span>
+          <span class="strength-label" id="strength-label">—</span>
+        </div>
+        <div class="strength-bar-wrap">
+          <div class="strength-bar" id="strength-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Criteria Checklist</div>
+      <div class="criteria-list" id="criteria-list">
+        <div class="criteria-item"><div class="dot fail" id="c1"></div> At least 8 characters long</div>
+        <div class="criteria-item"><div class="dot fail" id="c2"></div> Contains uppercase letters (A–Z)</div>
+        <div class="criteria-item"><div class="dot fail" id="c3"></div> Contains lowercase letters (a–z)</div>
+        <div class="criteria-item"><div class="dot fail" id="c4"></div> Contains numbers (0–9)</div>
+        <div class="criteria-item"><div class="dot fail" id="c5"></div> Contains special characters (!@#$...)</div>
+        <div class="criteria-item"><div class="dot fail" id="c6"></div> At least 12 characters (recommended)</div>
+      </div>
+    </div>
+
+    <div class="card" id="strength-advice" style="display:none;">
+      <div class="card-title">Recommendation</div>
+      <div id="advice-text" style="font-size: 0.82rem; color: #8b949e; line-height: 1.7;"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+var currentCipher = 'caesar';
+var fileContent = '';
+var fileOutputContent = '';
+var fileOutputName = '';
+
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function setCipher(cipher, btn) {
+  currentCipher = cipher;
+  document.querySelectorAll('.cipher-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  var labels = {
+    caesar: ['Caesar Cipher — Shift Key (1–25)', 'Shift Value (1–25)', 'e.g. 4'],
+    vigenere: ['Vigenère Cipher — Keyword', 'Keyword (letters only)', 'e.g. KEY'],
+    aes: ['AES-256 — Password Key', 'Password Key', 'e.g. MySecretPass123!']
+  };
+  document.getElementById('cipher-label').textContent = labels[cipher][0];
+  document.getElementById('key-label').textContent = labels[cipher][1];
+  document.getElementById('input-key').placeholder = labels[cipher][2];
+  clearAll();
+}
+
+function caesarEncrypt(text, shift) {
+  shift = ((shift % 26) + 26) % 26;
+  return text.toUpperCase().replace(/[A-Z]/g, function(c) {
+    return String.fromCharCode((c.charCodeAt(0) - 65 + shift) % 26 + 65);
+  });
+}
+
+function caesarDecrypt(text, shift) {
+  return caesarEncrypt(text, 26 - shift);
+}
+
+function vigenereEncrypt(text, key) {
+  text = text.toUpperCase().replace(/[^A-Z]/g, '');
+  key = key.toUpperCase().replace(/[^A-Z]/g, '');
+  if (!key) return '';
+  var result = '';
+  for (var i = 0; i < text.length; i++) {
+    var shift = key.charCodeAt(i % key.length) - 65;
+    result += String.fromCharCode((text.charCodeAt(i) - 65 + shift) % 26 + 65);
+  }
+  return result;
+}
+
+function vigenereDecrypt(text, key) {
+  text = text.toUpperCase().replace(/[^A-Z]/g, '');
+  key = key.toUpperCase().replace(/[^A-Z]/g, '');
+  if (!key) return '';
+  var result = '';
+  for (var i = 0; i < text.length; i++) {
+    var shift = key.charCodeAt(i % key.length) - 65;
+    result += String.fromCharCode((text.charCodeAt(i) - 65 - shift + 26) % 26 + 65);
+  }
+  return result;
+}
+
+function doEncrypt() {
+  var text = document.getElementById('input-text').value.trim();
+  var key = document.getElementById('input-key').value.trim();
+  var result = '';
+  var alertEl = document.getElementById('output-alert');
+  alertEl.innerHTML = '';
+
+  if (!text) { showAlert(alertEl, 'Please enter a message.', 'error'); return; }
+  if (!key) { showAlert(alertEl, 'Please enter a key.', 'error'); return; }
+
+  if (currentCipher === 'caesar') {
+    var shift = parseInt(key);
+    if (isNaN(shift) || shift < 1 || shift > 25) { showAlert(alertEl, 'Shift must be a number between 1 and 25.', 'error'); return; }
+    result = caesarEncrypt(text, shift);
+  } else if (currentCipher === 'vigenere') {
+    if (!/^[a-zA-Z]+$/.test(key)) { showAlert(alertEl, 'Vigenère key must contain letters only.', 'error'); return; }
+    result = vigenereEncrypt(text, key);
+  } else {
+    result = CryptoJS.AES.encrypt(text, key).toString();
+  }
+
+  document.getElementById('output-text').childNodes[0].nodeValue = result + '\n';
+  showAlert(alertEl, 'Encrypted successfully.', 'success');
+}
+
+function doDecrypt() {
+  var text = document.getElementById('input-text').value.trim();
+  var key = document.getElementById('input-key').value.trim();
+  var result = '';
+  var alertEl = document.getElementById('output-alert');
+  alertEl.innerHTML = '';
+
+  if (!text) { showAlert(alertEl, 'Please enter a message.', 'error'); return; }
+  if (!key) { showAlert(alertEl, 'Please enter a key.', 'error'); return; }
+
+  if (currentCipher === 'caesar') {
+    var shift = parseInt(key);
+    if (isNaN(shift) || shift < 1 || shift > 25) { showAlert(alertEl, 'Shift must be between 1 and 25.', 'error'); return; }
+    result = caesarDecrypt(text, shift);
+  } else if (currentCipher === 'vigenere') {
+    if (!/^[a-zA-Z]+$/.test(key)) { showAlert(alertEl, 'Vigenère key must contain letters only.', 'error'); return; }
+    result = vigenereDecrypt(text, key);
+  } else {
+    try {
+      var bytes = CryptoJS.AES.decrypt(text, key);
+      result = bytes.toString(CryptoJS.enc.Utf8);
+      if (!result) throw new Error();
+    } catch(e) {
+      showAlert(alertEl, 'Decryption failed. Check your key.', 'error'); return;
+    }
+  }
+
+  document.getElementById('output-text').childNodes[0].nodeValue = result + '\n';
+  showAlert(alertEl, 'Decrypted successfully.', 'success');
+}
+
+function clearAll() {
+  document.getElementById('input-text').value = '';
+  document.getElementById('input-key').value = '';
+  document.getElementById('output-text').childNodes[0].nodeValue = 'Result will appear here...\n';
+  document.getElementById('output-alert').innerHTML = '';
+}
+
+function copyOutput() {
+  var text = document.getElementById('output-text').childNodes[0].nodeValue.trim();
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = 'copied!';
+    setTimeout(function() { btn.textContent = 'copy'; }, 1500);
+  });
+}
+
+function showAlert(el, msg, type) {
+  el.innerHTML = '<div class="alert alert-' + (type === 'success' ? 'success' : type === 'info' ? 'info' : 'error') + '">' + msg + '</div>';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('file-drop').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('file-drop').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('file-drop').classList.remove('dragover');
+  var file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+}
+
+function handleFileSelect(e) {
+  var file = e.target.files[0];
+  if (file) loadFile(file);
+}
+
+function loadFile(file) {
+  if (!file.name.endsWith('.txt')) {
+    showAlert(document.getElementById('file-alert'), 'Only .txt files are supported.', 'error');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    fileContent = e.target.result;
+    document.getElementById('file-name').textContent = '📄 ' + file.name;
+    document.getElementById('file-size').textContent = (file.size / 1024).toFixed(2) + ' KB';
+    document.getElementById('file-info').classList.add('show');
+    document.getElementById('file-alert').innerHTML = '';
+  };
+  reader.readAsText(file);
+}
+
+function encryptFile() {
+  var key = document.getElementById('file-key').value.trim();
+  var alertEl = document.getElementById('file-alert');
+  if (!fileContent) { showAlert(alertEl, 'Please upload a file first.', 'error'); return; }
+  if (!key) { showAlert(alertEl, 'Please enter a key.', 'error'); return; }
+  var encrypted = CryptoJS.AES.encrypt(fileContent, key).toString();
+  fileOutputContent = encrypted;
+  fileOutputName = 'encrypted_output.txt';
+  document.getElementById('file-output-label').textContent = 'Encrypted content:';
+  document.getElementById('file-output-text').textContent = encrypted;
+  document.getElementById('file-output-card').style.display = 'block';
+  showAlert(alertEl, 'File encrypted successfully.', 'success');
+}
+
+function decryptFile() {
+  var key = document.getElementById('file-key').value.trim();
+  var alertEl = document.getElementById('file-alert');
+  if (!fileContent) { showAlert(alertEl, 'Please upload a file first.', 'error'); return; }
+  if (!key) { showAlert(alertEl, 'Please enter a key.', 'error'); return; }
+  try {
+    var bytes = CryptoJS.AES.decrypt(fileContent, key);
+    var decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decrypted) throw new Error();
+    fileOutputContent = decrypted;
+    fileOutputName = 'decrypted_output.txt';
+    document.getElementById('file-output-label').textContent = 'Decrypted content:';
+    document.getElementById('file-output-text').textContent = decrypted;
+    document.getElementById('file-output-card').style.display = 'block';
+    showAlert(alertEl, 'File decrypted successfully.', 'success');
+  } catch(e) {
+    showAlert(alertEl, 'Decryption failed. Wrong key or file not encrypted.', 'error');
+  }
+}
+
+function downloadFile() {
+  var blob = new Blob([fileOutputContent], { type: 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileOutputName;
+  a.click();
+}
+
+function checkStrength() {
+  var pw = document.getElementById('pw-input').value;
+  var c1 = pw.length >= 8;
+  var c2 = /[A-Z]/.test(pw);
+  var c3 = /[a-z]/.test(pw);
+  var c4 = /[0-9]/.test(pw);
+  var c5 = /[^A-Za-z0-9]/.test(pw);
+  var c6 = pw.length >= 12;
+
+  var criteria = [c1, c2, c3, c4, c5, c6];
+  criteria.forEach(function(pass, i) {
+    document.getElementById('c' + (i+1)).className = 'dot ' + (pass ? 'pass' : 'fail');
+  });
+
+  var score = [c1, c2, c3, c4, c5].filter(Boolean).length;
+  var colors = ['#f85149', '#e3b341', '#e3b341', '#3fb950', '#3fb950'];
+  var labels = ['Very Weak', 'Weak', 'Moderate', 'Strong', 'Very Strong'];
+  var widths = ['10%', '30%', '55%', '80%', '100%'];
+
+  if (!pw) { score = -1; }
+
+  var bar = document.getElementById('strength-bar');
+  var label = document.getElementById('strength-label');
+
+  if (score < 0) {
+    bar.style.width = '0%';
+    label.textContent = '—';
+    label.style.color = '#6e7681';
+    document.getElementById('strength-advice').style.display = 'none';
+    return;
+  }
+
+  bar.style.width = widths[score];
+  bar.style.background = colors[score];
+  label.textContent = labels[score];
+  label.style.color = colors[score];
+
+  var advices = [
+    'Your key is very weak. An attacker could guess it almost instantly. Add uppercase letters, numbers, and special characters.',
+    'Your key is weak. It meets only basic length requirements. Add more character variety to improve security.',
+    'Your key is moderate. It has some variety but could be stronger. Aim for 12+ characters with all character types.',
+    'Your key is strong. Good length and character variety. Consider making it 12+ characters for maximum security.',
+    'Excellent key strength. This key is well-suited for AES encryption with strong resistance to brute force attacks.'
+  ];
+
+  document.getElementById('advice-text').textContent = advices[score];
+  document.getElementById('strength-advice').style.display = 'block';
+}
+</script>
+</body>
+</html>

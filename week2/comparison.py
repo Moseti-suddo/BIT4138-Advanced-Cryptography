@@ -1,0 +1,18 @@
+print("_" * 55)
+print("       Cipher Comparison Summary")
+print("_" * 55)
+
+print(f"{'Property':<25} {'Caesar':<15} {'Vigenere':<15}")
+print("-" * 55)
+print(f"{'Key Type':<25} {'Single shift':<15} {'Keyword':<15}")
+print(f"{'Key Space Size':<25} {'26 keys':<15} {'26^n keys':<15}")
+print(f"{'Encryption Type':<25} {'Monoalphabetic':<15} {'Polyalphabetic':<15}")
+print(f"{'Frequency Attack':<25} {'Vulnerable':<15} {'Resistant':<15}")
+print(f"{'Brute Force':<25} {'Very Easy':<15} {'Harder':<15}")
+print(f"{'Security Rating':<25} {'Very Weak':<15} {'Moderate':<15}")
+print("_" * 55)
+
+print()
+print("Conclusion: Vigenere is stronger than Caesar due to")
+print("its larger key space and polyalphabetic substitution.")
+print("However both are considered insecure by modern standards.")
